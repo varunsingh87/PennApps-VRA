@@ -1,8 +1,36 @@
-import { GenericDatabaseReader, GenericDatabaseWriter } from 'convex/server'
+import { Auth, GenericDatabaseReader, GenericDatabaseWriter } from 'convex/server'
 import { DataModel, Doc, Id } from '../_generated/dataModel'
 import { RequestValidity } from '../../lib/shared'
 import { ConvexError } from 'convex/values'
 import { convertToUserDocumentArray, fulfillAndFlatten } from './helpers'
+import { verifyUser } from '../user'
+
+/**
+ * Adds a join request and opens a cross chat with the pitch as the first message
+ * @param db The database object (write access required for DB INSERT)
+ * @param auth The authentication object for verifying the user
+ * @param inviterTeamId The id of the team that is considering/requesting the invite
+ * @param joinerId The id of the joiner that may switch teams
+ * @param pitch The first message in the cross chat between the joiner and the inviting team
+ * @param teamConsent Whether the join request is an invite
+ * @return {Id<'join_requests'>} Id of the new join request
+ */
+export async function recordJoinRequest(db: GenericDatabaseWriter<DataModel>, auth: Auth, inviterTeamId: Id<'teams'>, joinerId: Id<'users'>, pitch: string, teamConsent: boolean) {
+  const user = await verifyUser(db, auth);
+  const newJoinRequest = await db.insert('join_requests', {
+    team: inviterTeamId,
+    user: joinerId,
+    userConsent: !teamConsent,
+    teamConsent
+  })
+  await db.insert('join_messages', {
+    join_request: newJoinRequest,
+    sender: user._id,
+    message: pitch
+  })
+
+  return newJoinRequest
+}
 
 /**
  * Lists the teams and competition a user is in
@@ -104,7 +132,11 @@ export async function validateTeamJoinRequest(
     return RequestValidity.COMMITTED
   }
 
-  const joinRequest = inviterTeam.joinRequests.find(
+  const invitingTeamJoinRequests = await db.query('join_requests')
+    .withIndex('by_team', q => q.eq('team', inviterTeam._id))
+    .collect()
+
+  const joinRequest = invitingTeamJoinRequests.find(
     (item) => item.user == joiner._id
   )
   if (!joinRequest) {
@@ -141,12 +173,15 @@ export async function addUserToTeam(
   user: Doc<'users'>,
   invitingTeam: Doc<'teams'>
 ) {
-  // Clear join request
-  invitingTeam.joinRequests = invitingTeam.joinRequests.filter(
-    (item) => item.user != user._id
-  )
-
-  await db.patch(invitingTeam._id, { joinRequests: invitingTeam.joinRequests })
+  const userToTeamJoinRequest = await db
+    .query('join_requests')
+    .withIndex('by_team',
+        q => q.eq('team', invitingTeam._id)
+    )
+    .filter(q => q.eq(q.field('user'), user._id))
+    .first()
+  if (userToTeamJoinRequest)
+    await db.delete(userToTeamJoinRequest._id)
 
   const teamOfJoiner = await findTeamOfUser(db, user, invitingTeam.competition)
   if (!teamOfJoiner) {
@@ -175,8 +210,8 @@ export async function addUserToTeam(
 
 /**
  * Gets a list of the teams in a competition with the participants
- * @param db
- * @param competitionId
+ * @param db Database object (DB read access)
+ * @param competitionId Id of the competition
  */
 export async function listCompetitionTeams(
   db: GenericDatabaseReader<DataModel>,
@@ -214,8 +249,32 @@ export async function verifyTeam(
     memberRows.map((item) => item.user)
   )
 
+  const joinRequests = await db.query('join_requests')
+    .withIndex('by_team', q => q.eq('team', teamId))
+    .collect()
+
   return {
     ...team,
     members,
+    joinRequests
   }
 }
+
+/**
+ * Validates whether a user can see and send messages in a cross chat
+ * @param db The database object
+ * @param joinRequestInfo The join request that gives info on the team and user joining the team
+ * @param viewer The user who is trying to send a message or view the chat
+ */
+export async function validateCrossChatParticipation(
+  db: GenericDatabaseReader<DataModel>,
+  joinRequestInfo: Doc<'join_requests'>,
+  viewer: Id<'users'>
+): Promise<boolean> {
+
+  const invitingTeam = await verifyTeam(db, joinRequestInfo.team)
+  return invitingTeam.members.some(member => member._id == viewer) ||
+    joinRequestInfo.user == viewer
+}
+
+

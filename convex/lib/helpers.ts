@@ -1,5 +1,5 @@
 import { GenericDatabaseReader } from 'convex/server'
-import { DataModel, Id } from '../_generated/dataModel'
+import { DataModel, Doc, Id } from '../_generated/dataModel'
 
 /**
  * Callback function that converts an array of objects with a user id to an array of objects with a user object
@@ -33,7 +33,7 @@ export function includeUserDocument(
 export function convertToUserDocumentArray(
   db: GenericDatabaseReader<DataModel>,
   userIdList: Id<'users'>[]
-) {
+): Promise<Doc<'users'>[]> {
   const mapToUser = async (userId: Id<'users'>) => {
     const user = await db.get(userId)
     if (!user) return []
@@ -52,3 +52,13 @@ export async function fulfillAndFlatten(promiseList: Array<Promise<any>>) {
   const arr = await Promise.all(promiseList)
   return arr.flat()
 }
+
+export const DELETED_USER: Doc<'users'> = {
+  _id: '0' as Id<'users'>,
+  _creationTime: 0,
+  pictureURL: '/deleted-user.svg',
+  name: 'DeletedUser',
+  bio: '',
+  tokenIdentifier: ''
+}
+

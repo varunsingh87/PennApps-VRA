@@ -20,7 +20,6 @@ export function AlertProvider(props) {
     (message, onContinue) => {
       setMessage(message)
       setOnContinue(() => onContinue)
-      console.log(`[handleOpen] message: ${message}, onContinue: ${onContinue}`)
       setOpen(true)
     },
     [setMessage, setOnContinue, setOpen]

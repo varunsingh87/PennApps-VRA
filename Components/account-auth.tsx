@@ -6,7 +6,7 @@ import { api } from '../convex/_generated/api'
 export function Login() {
   const { isLoading, loginWithRedirect } = useAuth0()
   if (isLoading) {
-    return <button className="btn btn-primary">Loading...</button>
+    return <p>Loading...</p>
   }
   return (
     <button className="btn btn-primary" onClick={() => loginWithRedirect({})}>

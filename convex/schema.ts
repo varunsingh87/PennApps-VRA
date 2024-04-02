@@ -21,16 +21,15 @@ export const submission = {
 }
 
 export const joinRequest = {
+  team: v.id('teams'),
   user: v.id('users'),
   teamConsent: v.boolean(),
-  userConsent: v.boolean(),
-  pitch: v.string(),
+  userConsent: v.boolean()
 }
 
 const team = {
   competition: v.id('competitions'),
-  submission: v.optional(v.object(submission)),
-  joinRequests: v.array(v.object(joinRequest)),
+  submission: v.optional(v.object(submission))
 }
 
 const user = {
@@ -51,12 +50,26 @@ const message = {
   message: v.string(),
 }
 
+const joinMessage = {
+  join_request: v.id('join_requests'),
+  sender: v.id('users'),
+  message: v.string()
+}
+
 export default defineSchema({
-  users: defineTable(user).index('primary', ['tokenIdentifier']),
+  users: defineTable(user)
+    .index('primary', ['tokenIdentifier']),
   competitions: defineTable(competition),
-  teams: defineTable(team).index('by_competition', ['competition']),
+  teams: defineTable(team)
+    .index('by_competition', ['competition']),
+  join_requests: defineTable(joinRequest)
+    .index('by_team', ['team'])
+    .index('by_user', ['user']),
   participants: defineTable(participant)
     .index('by_user', ['user'])
     .index('by_team', ['team']),
-  messages: defineTable(message).index('by_team', ['team']),
+  team_messages: defineTable(message)
+    .index('by_team', ['team']),
+  join_messages: defineTable(joinMessage)
+    .index('by_request', ['join_request'])
 })

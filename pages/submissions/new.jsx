@@ -1,6 +1,5 @@
 import React from 'react'
-import { ConvexHttpClient } from 'convex/browser'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import {
   Button,
   Form,
@@ -10,12 +9,12 @@ import {
   FormText,
   Container,
 } from 'reactstrap'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { Breadcrumb, BreadcrumbItem } from 'reactstrap'
 import { useRouter } from 'next/router'
 import { api } from '../../convex/_generated/api'
 
-export default function App(props) {
+export default function App() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [file, setFile] = useState('')
@@ -26,7 +25,6 @@ export default function App(props) {
     event.preventDefault()
     // await addSubmission({ title, description });
     await router.push('/profile')
-    // console.log(competition + name  + title + description);
   }
 
   const addSubmission = useMutation(api.submission.addSubmission)

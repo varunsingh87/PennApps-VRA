@@ -11,6 +11,7 @@ import { useState } from 'react'
 import { Id } from '../../convex/_generated/dataModel'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
+import { RequestValidity } from '../../lib/shared'
 
 export default function JoinRequestButton({
   competitionId,
@@ -28,10 +29,17 @@ export default function JoinRequestButton({
   const [requestJoinModal, setRequestJoinModal] = useState(false)
 
   const toggleJoinRequestModal = () => setRequestJoinModal(!requestJoinModal)
-  const handleJoinClick = (id: Id<'teams'>) => {
+  const handleJoinClick = async (id: Id<'teams'>) => {
     setRequestJoinModal(false)
-    requestJoin({ id })
-    setJoinButtonMessage('Join requested!')
+    const joinRequest: RequestValidity | null = await requestJoin({ id })
+    if (joinRequest != null && joinRequest >= 0) {
+      setJoinButtonMessage('Join requested!')
+    } else {
+      setJoinButtonMessage('Invalid join request')
+    }
+    setTimeout(() => {
+      setJoinButtonMessage('Join Team')
+    }, 2000)
   }
 
   const handleJoinModalOpen = () => {

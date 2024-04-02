@@ -7,9 +7,9 @@ export default function TeamMembers({
   members: Array<Doc<'users'>>
 }) {
   return (
-    <List className="mb-4">
+    <List className="mb-4 border p-2">
       {members.map((member) => (
-        <ListInlineItem>
+        <ListInlineItem key={member._id}>
           <img
             src={member.pictureURL}
             width={50}

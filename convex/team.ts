@@ -31,7 +31,7 @@ export const get = query({
       })
     }
     const messages = await db
-      .query('messages')
+      .query('team_messages')
       .withIndex('by_team', (q) => q.eq('team', teamInfo._id))
       .collect()
 
@@ -69,7 +69,7 @@ export const sendMessage = mutation({
       })
     }
 
-    return await db.insert('messages', {
+    return await db.insert('team_messages', {
       team: teamId,
       sender: user._id,
       message,

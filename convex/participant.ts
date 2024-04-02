@@ -4,12 +4,12 @@ import { verifyUser } from './user'
 import {
   findTeamOfUser,
   addUserToTeam,
-  validateTeamJoinRequest,
+  validateTeamJoinRequest, recordJoinRequest
 } from './lib/team'
 import { RequestValidity } from '../lib/shared'
 
 /**
- * @inheritDoc team.findTeamOfUser
+ * Gets the information about the logged-in user for a competition and the user's teams
  */
 export const readParticipant = query({
   args: { competitionId: v.id('competitions') },
@@ -17,6 +17,39 @@ export const readParticipant = query({
     const user = await verifyUser(db, auth)
     return await findTeamOfUser(db, user, competitionId)
   },
+})
+
+export const readInvites = query({
+  args: { competitionId: v.id('competitions') },
+  handler: async ({ db, auth }, { competitionId }) => {
+    const user = await verifyUser(db, auth)
+    const userTeam = await findTeamOfUser(db, user, competitionId)
+    if (!userTeam) {
+      return false
+    }
+
+    const teamsThatInvitedUser = await db
+      .query('join_requests')
+      .withIndex('by_user', q => q.eq('user', user._id))
+      .filter(q => q.field('teamConsent'))
+      .collect()
+
+    const teamListWithTeammates = teamsThatInvitedUser.map(async joinRequest => {
+      const teammates = await db.query('participants')
+        .withIndex('by_team', q => q.eq('team', joinRequest.team))
+        .collect()
+      const teammatesWithInfo = []
+      for (const teammate of teammates) {
+        const user = await db.get(teammate.user);
+        if (user)
+          teammatesWithInfo.push({...teammate, user })
+      }
+
+      return { ...joinRequest, teammates: teammatesWithInfo }
+    })
+
+    return await Promise.all(teamListWithTeammates)
+  }
 })
 
 /**
@@ -47,7 +80,6 @@ export const joinCompetition = mutation({
     // Add user to competition and create new team
     const team = await db.insert('teams', {
       competition: id,
-      joinRequests: [],
     })
 
     return await db.insert('participants', { user: user._id, team })
@@ -83,13 +115,8 @@ export const requestJoin = mutation({
         throw new ConvexError('The request has already been made')
       case RequestValidity.VALID:
         // Record the join request
-        inviterTeam.joinRequests.push({
-          user: user._id,
-          userConsent: true,
-          teamConsent: false,
-          pitch,
-        })
-        return await db.replace(inviterTeam._id, inviterTeam)
+        await recordJoinRequest(db, auth, inviterTeam._id, user._id, pitch, false)
+        return RequestValidity.VALID
       case RequestValidity.INVITED:
         return await addUserToTeam(db, user, inviterTeam)
       default:
@@ -140,15 +167,8 @@ export const inviteToTeam = mutation({
         throw new ConvexError('The invite was already made')
       case RequestValidity.VALID:
         // Record the join request
-        inviterTeam.joinRequests.push({
-          user: joiner._id,
-          userConsent: false,
-          teamConsent: true,
-          pitch,
-        })
-        return await db.patch(inviterTeam._id, {
-          joinRequests: inviterTeam.joinRequests,
-        })
+        await recordJoinRequest(db, auth, inviterTeam._id, joiner._id, pitch, true)
+        return RequestValidity.VALID
       case RequestValidity.REQUESTED:
         return addUserToTeam(db, joiner, inviterTeam)
       default:

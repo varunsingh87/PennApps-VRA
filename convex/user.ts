@@ -44,7 +44,6 @@ export const storeUser = mutation({
     //filter for users
     const user = await verifyUser(db, auth)
     if (typeof user !== 'undefined') {
-      console.log(user)
       // If we've seen this identity before but the name has changed, patch the value.
       if (user.name != identity.nickname && user.name != identity.name) {
         await db.patch<'users'>(user._id, {
@@ -59,7 +58,7 @@ export const storeUser = mutation({
       }
       return user._id
     }
-    console.log(identity)
+
     // If it's a new identity, create a new `User`.
     return db.insert('users', {
       name: identity.nickname || identity.name!,

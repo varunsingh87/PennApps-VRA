@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as competition from "../competition.js";
+import type * as crosschat from "../crosschat.js";
 import type * as lib_helpers from "../lib/helpers.js";
 import type * as lib_team from "../lib/team.js";
 import type * as participant from "../participant.js";
@@ -32,6 +33,7 @@ import type * as user from "../user.js";
  */
 declare const fullApi: ApiFromModules<{
   competition: typeof competition;
+  crosschat: typeof crosschat;
   "lib/helpers": typeof lib_helpers;
   "lib/team": typeof lib_team;
   participant: typeof participant;
