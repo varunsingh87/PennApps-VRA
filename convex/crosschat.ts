@@ -15,8 +15,6 @@ export const listForUser = query({
       .withIndex('by_user', q => q.eq('user', user._id))
       .collect()
 
-
-
     return fulfillAndFlatten(
       joinRequests
         .filter(async item => {
@@ -26,8 +24,12 @@ export const listForUser = query({
         .map(async item => {
           const team = await verifyTeam(db, item.team)
           if (!team) return []
+          const joiner = await db.get(item.user)
+          if (!joiner) return []
+
           return [{
             joinRequest: item,
+            joiner,
             teamMembers: team.members
           }]
         })
@@ -49,8 +51,11 @@ export const listForTeam = query({
         .map(async item => {
           const team = await verifyTeam(db, item.team)
           if (!team) return []
+          const joiner = await db.get(item.user)
+          if (!joiner) return []
           return [{
             joinRequest: item,
+            joiner,
             teamMembers: team.members
           }]
         })

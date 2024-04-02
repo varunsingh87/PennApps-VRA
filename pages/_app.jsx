@@ -39,7 +39,9 @@ function MyApp({ Component, pageProps }) {
             </Layout>
           </Unauthenticated>
           <AuthLoading>
-            <h1>Loading...</h1>
+            <Layout>
+              <Component {...pageProps} authenticated={false} />
+            </Layout>
           </AuthLoading>
         </ConvexProviderWithAuth0>
       </Auth0Provider>
